@@ -114,50 +114,27 @@ void YSMF::fillMatrix() {
     int ndd = NNZ;
     int dist;
     double PP = (double)_nRows / (double)NNZ;
-	if(PP < 1.0){
-		//it works only if number of row are lower then the number of non zero elements
-		for(int i = 1; i < _nRows; i++){
-			double p = unif(rng);
-			if(p > PP){
-				int n = 1;
-				dist = _nRows - i;
-				n = (ndd / dist);
-				ndd -= n;
-				IA[i] = IA[i-1] + n;
-			}
-			else
-				IA[i] = IA[i-1];
-		}
-		IA[_nRows] = NNZ;
-	}
-	else {
-		//otherwise use 0.5 as threshold
+	//it works only if number of row are lower then the number of non zero elements
+	if(PP > 0.99){ 
 		PP = 0.5;
-		for(int i = 1; i < _nRows; i++){
-			double p = unif(rng);
-			if(p > PP){
-				int n = 1;
-				dist = _nRows - i;
-				n = (ndd / dist);
-				ndd -= n;
-				IA[i] = IA[i-1] + n;
-			}
-			else
-				IA[i] = IA[i-1];
-		}
-		IA[_nRows] = NNZ;
 	}
+	for(int i = 1; i < _nRows; i++){
+		double p = unif(rng);
+		if(p > PP){
+			int n = 1;
+			dist = _nRows - i;
+			n = (ndd / dist);
+			ndd -= n;
+			IA[i] = IA[i-1] + n;
+		}
+		else
+			IA[i] = IA[i-1];
+	}
+	IA[_nRows] = NNZ;
 
 	//Fill A
 	for(int i = 0; i < NNZ; i++){
-		A[i]  = (int) (unif(rng) * 9) + 1;
-		if(i > 0){
-			//check that element of the same row are in different cols and always in l2r order
-			do{
-				JA[i] = ( (int) (unif(rng) * _nCols) );
-			} while(JA[i] == JA[i-1] );
-		}
-
+		A[i]  = (int) (unif(rng) * 9) + 1; //value in [1,9]
 	}
 
 
