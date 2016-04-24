@@ -12,18 +12,22 @@ void helper(std::string file){
 
 int main(int argc, char** argv)
 {
-	if (argc < 1) {
+	if (argc < 5) {
         helper(argv[0]);
         return 0;
     }
     //default value
     int n_col = 100;
     int n_row = 100;
-    int fill  = 10;
+    double fill  = 0.1;
     int n_thread = 1;
 	//check other option
-    int i = 2;
+    int i = 1;
     while( i < argc){
+        if(strcmp(argv[i],"-help") == 0 || strcmp(argv[i], "-h") == 0){
+			helper(argv[0]);
+			return 0;
+        }
         if(strcmp(argv[i],"-row") == 0){
             if(i+1 < argc){
                 n_row = atoi(argv[i+1]);
@@ -46,7 +50,7 @@ int main(int argc, char** argv)
         }
         else if(strcmp(argv[i],"-fill") == 0){
             if(i+1 < argc){
-                fill = atoi(argv[i+1]);
+                fill = (double)atoi(argv[i+1]) / 100.0f;
             }
             else{
                 std::cerr << "Missing value for -fill"<< std::endl;
