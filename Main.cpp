@@ -1,5 +1,6 @@
 #include "Main.hpp"
 #include "YSMF.hpp"
+#include "Mul.hpp"
 
 void helper(std::string file){
     std::cout << "Usage:: " << file << " -row <n_row> -col <n_col> [-fill <\%fill>] [-t <n_thread>]" << std::endl << std::endl;
@@ -78,7 +79,22 @@ int main(int argc, char** argv)
     std::cout << "\t\%fill: " << fill << std::endl;
     std::cout << "\tn_thread: " << n_thread << std::endl;
 
-    YSMF *matrix = new YSMF(n_row, n_col, fill);
-    matrix->print();
-    std::cout << "END :D" << std::endl;
+	std::cout << "__GEN__" << std::endl;
+	int tmpDim = std::min(n_row, n_col);
+	YSMF *a = new YSMF(n_row, tmpDim, fill);
+	YSMF *b = new YSMF(tmpDim, n_col, fill);
+	std::cout << "__END_GEN__" << std::endl;
+
+	std::chrono::time_point<std::chrono::system_clock> init;
+	std::chrono::time_point<std::chrono::system_clock> end;
+	init = std::chrono::system_clock::now();
+	Mul moltiplica = Mul(a, b);
+	YSMF *r = moltiplica.calulate(0, n_row);
+	end = std::chrono::system_clock::now();
+
+	std::cout << "__MOLT__" << std::endl;
+
+
+    std::cout << "END :D [" << std::chrono::duration_cast<std::chrono::milliseconds>(end - init).count() << "]" << std::endl;
 }
+

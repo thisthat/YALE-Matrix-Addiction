@@ -9,9 +9,18 @@ YSMF::YSMF(int nRows, int nCols, double fillPerc){
     NNZ = (int) ((double)_nRows * (double)_nCols * _fill);
     std::cout << "NZZ=" << NNZ << std::endl;
     A = std::vector<int>( NNZ);
-    IA = std::vector<int>( _nRows + 1); //we have to think about a random accomulative function
-    JA = std::vector<int>( NNZ ); //rand() * _nCols
+    IA = std::vector<int>( _nRows + 1);
+    JA = std::vector<int>( NNZ );
     fillMatrix();
+}
+
+YSMF::YSMF(int nRows, int nCols){
+	_nRows = nRows;
+	_nCols = nCols;
+	A = std::vector<int>( );
+	IA = std::vector<int>( _nRows + 1);
+	IA.push_back(0);
+	JA = std::vector<int>( );
 }
 
 YSMF::~YSMF() {
@@ -55,6 +64,21 @@ void YSMF::print() {
 	}
 }
 
+std::vector<std::vector<int>> YSMF::to_naiveMatrix(){
+	//init output variable
+	std::vector<std::vector<int>> ret = std::vector<std::vector<int>>(_nRows);
+	for(int i = 0; i < _nRows; i++){
+		ret[i] = std::vector<int>(_nCols);
+	}
+	//populate the array
+	for(int i = 0; i < _nRows; i++){
+		for(int j = 0; j < _nCols; j++){
+			ret[i][j] = getElement(i,j);
+		}
+	}
+	return ret;
+}
+
 
 int YSMF::getElement(int i, int j){
 	int d = IA[i+1] - IA[i];
@@ -80,6 +104,16 @@ std::vector<int> YSMF::getRowElement(int i){
 		}
 	}
 	else ret = std::vector<int>(0);
+	return ret;
+}
+
+std::vector<int> YSMF::getColElement(int j) {
+	std::vector<int> ret;
+	for(int i = 0; i < NNZ; i++){
+		if(JA[i] == j){
+			ret.push_back(A[i]);
+		}
+	}
 	return ret;
 }
 
@@ -115,7 +149,7 @@ void YSMF::fillMatrix() {
     int dist;
     double PP = (double)_nRows / (double)NNZ;
 	//it works only if number of row are lower then the number of non zero elements
-	if(PP > 0.99){ 
+	if(PP > 0.99){
 		PP = 0.5;
 	}
 	for(int i = 1; i < _nRows; i++){
@@ -161,6 +195,48 @@ void YSMF::fillMatrix() {
 		}
 	}
 }
+
+void YSMF::addElement(int elm, int row, int col) {
+	if(elm == 0) return;
+	A.push_back(elm);
+	JA.push_back(col);
+	for(int i = row+1; i <= _nRows; i++){
+		IA[i] += 1;
+	}
+	NNZ++;
+}
+
+int YSMF::getCols() {
+	return _nCols;
+}
+
+int YSMF::getRows() {
+	return _nRows;
+}
+
+std::vector<int> *YSMF::getA() {
+	return &A;
+}
+
+std::vector<int> *YSMF::getIA() {
+	return &IA;
+}
+
+std::vector<int> *YSMF::getJA() {
+	return &JA;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

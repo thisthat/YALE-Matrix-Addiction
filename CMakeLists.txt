@@ -9,6 +9,6 @@ set(SOURCE_FILES
     Makefile
     YSMF.cpp
     YSMF.hpp
-)
+        Mul.cpp Mul.hpp)
 
 add_executable(project_1 ${SOURCE_FILES})
