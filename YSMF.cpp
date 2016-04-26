@@ -7,7 +7,7 @@ YSMF::YSMF(int nRows, int nCols, double fillPerc){
 	_nCols = nCols;
 	_fill  = fillPerc;
     NNZ = (int) ((double)_nRows * (double)_nCols * _fill);
-    std::cout << "NZZ=" << NNZ << std::endl;
+    std::cout << "Fill matrix [" << _nRows << "x"<< _nCols <<"] with NZZ=" << NNZ << std::endl;
     A = std::vector<int>( NNZ);
     IA = std::vector<int>( _nRows + 1);
     JA = std::vector<int>( NNZ );
@@ -30,7 +30,6 @@ YSMF::~YSMF() {
 	std::vector<int>(IA).swap(IA);
 	JA.clear();
 	std::vector<int>(JA).swap(JA);
-
 }
 
 void YSMF::print() {
@@ -51,7 +50,7 @@ void YSMF::print() {
         std::cout << " " << IA[i];
     }
     std::cout << std::endl;
-	std::cout << "_____ MATRIX ____" << std::endl;
+	std::cout << "_____ MATRIX " << NNZ << " ____" << std::endl;
 	//print matrix
 	int indexA = 0;
 	std::string elm;
@@ -226,6 +225,19 @@ std::vector<int> *YSMF::getJA() {
 	return &JA;
 }
 
+void YSMF::export2CSV(char *name){
+	FILE *f;
+	f = fopen(name, "w+");
+	std::string elm;
+	for(int i = 0; i < _nRows; i++){
+		for(int j = 0; j < _nCols; j++){
+			elm = std::to_string(getElement(i,j)) + ((j == _nCols-1) ? "" : ",");
+			fprintf(f, "%s", elm.c_str());
+		}
+		fprintf(f, "\n");
+	}
+
+}
 
 
 

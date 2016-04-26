@@ -26,6 +26,7 @@ class YSMF {
 		std::vector<int> getRowJA(int i);
 		int getCols();
 		int getRows();
+		void export2CSV(char *);
 	private:
 		int _nRows, _nCols, NNZ;
 		double _fill;
