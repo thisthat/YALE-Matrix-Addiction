@@ -16,6 +16,7 @@ class YSMF {
 		std::vector<std::vector<int>> to_naiveMatrix();
 
 		void addElement(int elm, int row, int col);
+		void addElementThread(int elm, int row, int col, int nElmSkip);
 		int getElement(int i, int j);
 		std::vector<int> getRowElement(int i);
 		std::vector<int> getColElement(int j);

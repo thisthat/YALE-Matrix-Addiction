@@ -7,7 +7,7 @@ YSMF::YSMF(int nRows, int nCols, double fillPerc){
 	_nCols = nCols;
 	_fill  = fillPerc;
     NNZ = (int) ((double)_nRows * (double)_nCols * _fill);
-    std::cout << "Fill matrix [" << _nRows << "x"<< _nCols <<"] with NZZ=" << NNZ << std::endl;
+    //std::cout << "Fill matrix [" << _nRows << "x"<< _nCols <<"] with NZZ=" << NNZ << std::endl;
     A = std::vector<int>( NNZ);
     IA = std::vector<int>( _nRows + 1);
     JA = std::vector<int>( NNZ );
@@ -199,6 +199,24 @@ void YSMF::addElement(int elm, int row, int col) {
 	if(elm == 0) return;
 	A.push_back(elm);
 	JA.push_back(col);
+	for(int i = row+1; i <= _nRows; i++){
+		IA[i] += 1;
+	}
+	NNZ++;
+}
+
+
+void YSMF::addElementThread(int elm, int row, int col, int nElmSkip){
+	if(elm == 0) return;
+	//create memory for new elements
+	if (nElmSkip >= A.size()) {
+		A.resize(nElmSkip+1);
+	}
+	if (nElmSkip >= JA.size()) {
+		JA.resize(nElmSkip+1);
+	}
+	A.insert(A.begin() + nElmSkip, elm);
+	JA.insert(JA.begin() + nElmSkip, col);
 	for(int i = row+1; i <= _nRows; i++){
 		IA[i] += 1;
 	}
