@@ -154,13 +154,16 @@ int main(int argc, char** argv)
 		perror("Error pthread_attr_init");
 	}
 
+	if (s != 0) {
+		perror("Error pthread_attr_init");
+	}
 	if (pthread_mutex_init(&lock, NULL) != 0) {
 		perror("Error pthread_mutex_init lock");
 	}
 	if (pthread_mutex_init(&lockInfo, NULL) != 0) {
 		perror("Error pthread_mutex_init lockInfo");
 	}
-
+	std::cout << "Start..\n";
 	std::chrono::time_point<std::chrono::system_clock> init;
 	std::chrono::time_point<std::chrono::system_clock> end;
 	init = std::chrono::system_clock::now();
@@ -213,17 +216,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	std::cout << "cA: ";
-	printVector(cA);
-	std::cout << std::endl;
-	std::cout << "cIA: ";
-	printVector(cIA);
-	std::cout << std::endl;
-	std::cout << "cJA: ";
-	printVector(cJA);
-	std::cout << std::endl;
-
-
 	end = std::chrono::system_clock::now();
 	int timeRequired = std::chrono::duration_cast<std::chrono::milliseconds>(end - init).count();
     std::cout << "END [" << timeRequired << "]" << std::endl;
@@ -234,7 +226,7 @@ int main(int argc, char** argv)
 		if(!exists(filename)){
 			//write header
 			log.open (filename, std::ofstream::out | std::ofstream::app);
-			log << "rows,cols,fill,threads,time" << std::endl;
+			log << "rows,cols,fill,NNZ,threads,time" << std::endl;
 		}
 		else {
 			log.open (filename, std::ofstream::out | std::ofstream::app);
@@ -243,6 +235,7 @@ int main(int argc, char** argv)
 		log << n_row << ",";
 		log << n_col << ",";
 		log << fill << ",";
+		log << c->getNNZ() << ",";
 		log << n_thread << ",";
 		log << timeRequired << "";
 		log << std::endl;

@@ -1,6 +1,6 @@
 FLAG_C11 = -std=c++11 -stdlib=libc++
 CC = g++
-FLAGS = -O3 $(FLAG_C11)
+FLAGS = -O3 -pthread $(FLAG_C11)
 NAME = YSFMMoltiplication
 all: compile clean
 

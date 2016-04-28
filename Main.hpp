@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <iostream> //Basic I/O
 #include <pthread.h>
 #include <sys/stat.h>

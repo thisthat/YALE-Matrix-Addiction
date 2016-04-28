@@ -257,6 +257,12 @@ void YSMF::export2CSV(char *name){
 
 }
 
+int YSMF::getNNZ() {
+	return NNZ;
+}
+
+
+
 
 
 
