@@ -179,7 +179,7 @@ void YSMF::fillMatrix() {
 		std::vector<int> tmp(howManyPerRow);
 		int k = 0;
 		while(howManyPerRow > 0){
-			int elm = (int) (unif(rng) * _nCols);
+			int elm = (int) (unif(rng) * 10 * _nCols);
 			//avoid two element on the same column
 			if(std::find(tmp.begin(), tmp.end(), elm) == tmp.end())
 			{
@@ -189,8 +189,8 @@ void YSMF::fillMatrix() {
 		}
 		//l2r fill
 		std::sort(tmp.begin(), tmp.end());
-		for(int ii = 0; ii < tmp.size(); ii++){
-			JA[i++] = tmp[ii];
+		for(int h = 0; h < tmp.size(); h++){
+			JA[i++] = tmp[h];
 		}
 	}
 }

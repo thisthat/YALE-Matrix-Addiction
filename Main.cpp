@@ -2,7 +2,7 @@
 #include "YSMF.hpp"
 
 void helper(std::string file){
-    std::cout << "Usage:: " << file << " -row <n_row> -col <n_col> [-fill <\%fill>] [-t <n_thread>] [-d] [-s <ID>]" << std::endl << std::endl;
+    std::cout << "Usage:: " << file << " -row <n_row> -col <n_col> [-fill <\%fill>] [-t <n_thread>] [-d] [-s <ID>] [-f <filename>]" << std::endl << std::endl;
     std::cout << "Default values:" << std::endl;
     std::cout << "\tn_row : 100" << std::endl;
     std::cout << "\tn_col : 100" << std::endl;
@@ -12,6 +12,7 @@ void helper(std::string file){
     std::cout << "\t-s Strategy" << std::endl;
     std::cout << "\t\t0 : Single C Matrix among thread" << std::endl;
     std::cout << "\t\t1 : Multiple C Matrix merged after" << std::endl;
+	std::cout << "\t-f Append or create the result in the specified file" << std::endl;
 }
 
 //visible also by the threads
@@ -39,6 +40,7 @@ int main(int argc, char** argv)
     int n_thread = 1;
 	bool debug = false;
 	int strategy = 0;
+	std::string filename = "No File";
 	//check other option
     int i = 1;
     while( i < argc){
@@ -89,16 +91,26 @@ int main(int argc, char** argv)
                 return 1;
             }
         }
-        else if(strcmp(argv[i],"-t") == 0){
-            if(i+1 < argc){
-                n_thread = atoi(argv[i+1]);
-            }
-            else{
-                std::cerr << "Missing value for -t"<< std::endl;
-                helper(argv[0]);
-                return 1;
-            }
-        }
+		else if(strcmp(argv[i],"-t") == 0){
+			if(i+1 < argc){
+				n_thread = atoi(argv[i+1]);
+			}
+			else{
+				std::cerr << "Missing value for -t"<< std::endl;
+				helper(argv[0]);
+				return 1;
+			}
+		}
+		else if(strcmp(argv[i],"-f") == 0){
+			if(i+1 < argc){
+				filename = argv[i+1];
+			}
+			else{
+				std::cerr << "Missing value for -f"<< std::endl;
+				helper(argv[0]);
+				return 1;
+			}
+		}
 
         i++;
     }
@@ -110,11 +122,16 @@ int main(int argc, char** argv)
     std::cout << "\tn_thread: " << n_thread << std::endl;
     std::cout << "\tdebug: " << debug << std::endl;
     std::cout << "\tstrategy: " << strategy << std::endl;
+    std::cout << "\tfile: " << filename << std::endl;
+
 
 	int tmpDim = std::min(n_row, n_col);
 	a = new YSMF(n_row, tmpDim, fill);
 	b = new YSMF(tmpDim, n_col, fill);
     c = new YSMF(n_row, n_col);
+	std::vector<int> *cA = c->getA();
+	std::vector<int> *cIA = c->getIA();
+	std::vector<int> *cJA = c->getJA();
 
 	//preparating the threads data
 	struct threadData* _data = (struct threadData*) calloc(n_thread, sizeof(struct threadData));
@@ -122,12 +139,14 @@ int main(int argc, char** argv)
 	for(int i = 0; i < n_thread; i++){
 		_data[i].id = i;
 		_data[i].start = batch_size * i;
-		_data[i].end = _data[i].start + batch_size;
-		_data[i].c = new YSMF(0, _data[i].end-_data[i].start);
+		_data[i].end = (i == n_thread-1) ? n_row :  _data[i].start + batch_size;
+		_data[i].c = new YSMF(_data[i].end-_data[i].start, n_col);
 	}
-	_data[n_thread-1].end = n_row;
+
 
 	nElmWrite = (int *) calloc(n_thread, sizeof(int));
+
+
 
 	pthread_attr_t attr;
 	int s = pthread_attr_init(&attr);
@@ -164,29 +183,76 @@ int main(int argc, char** argv)
 			std::cout << " " << _data[i].end << " ,";
 			std::cout << " " << _data[i].id << " ,";
 			std::cout << " " << _data[i].tid << "";
+			std::cout << " " << _data[i].c << "";
 			std::cout << std::endl;
 		}
 	}
 
-
 	void *res;
+	int sumElms = 0;
+	int pos = 0;
 	for(int i = 0; i < n_thread; i++){
 		if (pthread_join(_data[i].tid, &res) != 0) {
 			perror("Error in pthread_join");
 		}
 		if(strategy == 1){
 			//merge results
-			//TODO
+			std::vector<int> *tA = _data[i].c->getA();
+			std::vector<int> *tIA = _data[i].c->getIA();
+			std::vector<int> *tJA = _data[i].c->getJA();
+			cA->reserve(cA->size() + tA->size());
+			cA->insert(cA->end(), tA->begin(), tA->end());
+			cJA->reserve(cJA->size() + tJA->size());
+			cJA->insert(cJA->end(), tJA->begin(), tJA->end());
+			//full fill spaces
+			int max = _data[i].c->getRows();
+			for(int k = 1; k <= max; k++){
+				cIA->at(++pos) = tIA->at(k) + sumElms;
+			}
+			sumElms += tIA->at(max);
 		}
 	}
 
+	std::cout << "cA: ";
+	printVector(cA);
+	std::cout << std::endl;
+	std::cout << "cIA: ";
+	printVector(cIA);
+	std::cout << std::endl;
+	std::cout << "cJA: ";
+	printVector(cJA);
+	std::cout << std::endl;
+
+
 	end = std::chrono::system_clock::now();
-    std::cout << "END [" << std::chrono::duration_cast<std::chrono::milliseconds>(end - init).count() << "]" << std::endl;
+	int timeRequired = std::chrono::duration_cast<std::chrono::milliseconds>(end - init).count();
+    std::cout << "END [" << timeRequired << "]" << std::endl;
+	//store result and parameter
+	if(filename.compare("No File") != 0){
+		//it exists?
+		std::ofstream log;
+		if(!exists(filename)){
+			//write header
+			log.open (filename, std::ofstream::out | std::ofstream::app);
+			log << "rows,cols,fill,threads,time" << std::endl;
+		}
+		else {
+			log.open (filename, std::ofstream::out | std::ofstream::app);
+		}
+		// and append
+		log << n_row << ",";
+		log << n_col << ",";
+		log << fill << ",";
+		log << n_thread << ",";
+		log << timeRequired << "";
+		log << std::endl;
+		log.close();
+	}
 
 	//Store result in csv file to check if the mul is correct with R
 	if(debug){
 		for(int i = 0; i < n_thread; i++){
-			std::cout << "[Thread " << i << "] " << nElmWrite[i] << std::endl;
+			std::cout << "[Thread " << i << "] " << (strategy == 0 ? nElmWrite[i] : _data[i].c->getA()->size())  << std::endl;
 		}
 		a->export2CSV("a.csv");
 		b->export2CSV("b.csv");
@@ -240,5 +306,27 @@ void *th_calculate_single_c(void *arg) {
 }
 
 void *th_calculate_multiple_c(void *arg) {
+	struct threadData *data = (struct threadData *)arg;
+	int maxColB = b->getCols();
+	std::vector<int> *aA = a->getA();
+	std::vector<int> *aJA = a->getJA();
+	int sum ;
+	int startLine = data->start;
+	int endLine = data->end;
+	int NNZ = 0;
+	//work only on out batch size
+	for(int i = startLine; i < endLine; i++){
+		for(int j = 0; j < maxColB; j++){
+			sum = 0;
+			for(int k = 0; k < maxColB; k++){
+				sum += a->getElement(i,k) * b->getElement(k, j);
+			}
+			if(sum > 0) {
+				// we have to store something, check where store the data
+				data->c->addElement(sum,i - startLine,j);
+			}
+
+		}
+	}
 	return NULL;
 }
