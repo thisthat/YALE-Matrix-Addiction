@@ -157,6 +157,10 @@ void YSMF::fillMatrix() {
 			int n = 1;
 			dist = _nRows - i;
 			n = (ndd / dist);
+			//not too many for each row
+			if( (double)n/(double)_nCols > 0.75f ){
+				n -= (int)((double)_nCols * 0.1f);
+			}
 			ndd -= n;
 			IA[i] = IA[i-1] + n;
 		}
@@ -179,7 +183,7 @@ void YSMF::fillMatrix() {
 		std::vector<int> tmp(howManyPerRow);
 		int k = 0;
 		while(howManyPerRow > 0){
-			int elm = (int) (unif(rng) * 10 * _nCols);
+			int elm = (int) (unif(rng) * _nCols);
 			//avoid two element on the same column
 			if(std::find(tmp.begin(), tmp.end(), elm) == tmp.end())
 			{
@@ -259,6 +263,34 @@ void YSMF::export2CSV(char *name){
 
 int YSMF::getNNZ() {
 	return NNZ;
+}
+
+std::vector<std::pair<int, int>> YSMF::getElmCoordinate() {
+	return getElmCoordinate(0, NNZ);
+}
+
+std::vector<std::pair<int, int>> YSMF::getElmCoordinate(int begin, int end) {
+	std::vector<std::pair<int,int>> ret;
+	int eXr = 0;
+	for(int i = begin; i < end; i++){
+		while(IA[eXr] < (i+1)){
+			eXr++;
+		}
+		ret.push_back(std::pair<int,int>(eXr-1, JA[i]));
+	}
+	return ret;
+}
+
+std::vector<std::pair<int, int>> YSMF::getElmCoordinateWithMaxLine(int begin, int end, int line) {
+	std::vector<std::pair<int,int>> ret;
+	int eXr = 0;
+	for(int i = begin; i < end && eXr < line; i++){
+		while(IA[eXr] < (i+1)){
+			eXr++;
+		}
+		if(eXr < line) ret.push_back(std::pair<int,int>(eXr-1, JA[i]));
+	}
+	return ret;
 }
 
 

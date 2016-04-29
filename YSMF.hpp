@@ -24,6 +24,9 @@ class YSMF {
 		std::vector<int> *getIA();
 		std::vector<int> *getJA();
 		std::pair<std::vector<int>, std::vector<int>> getRow(int i);
+		std::vector<std::pair<int, int>> getElmCoordinate();
+		std::vector<std::pair<int, int>> getElmCoordinate(int, int);
+		std::vector<std::pair<int, int>> getElmCoordinateWithMaxLine(int, int, int);
 		std::vector<int> getRowJA(int i);
 		int getCols();
 		int getRows();

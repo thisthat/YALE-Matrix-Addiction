@@ -12,6 +12,7 @@ void helper(std::string file){
     std::cout << "\t-s Strategy" << std::endl;
     std::cout << "\t\t0 : Single C Matrix among thread" << std::endl;
     std::cout << "\t\t1 : Multiple C Matrix merged after" << std::endl;
+    std::cout << "\t\t2 : Single C Matrix efficent" << std::endl;
 	std::cout << "\t-f Append or create the result in the specified file" << std::endl;
 }
 
@@ -22,10 +23,17 @@ YSMF *c;
 pthread_mutex_t lock;
 pthread_mutex_t lockInfo;
 int* nElmWrite;
+std::map<int, std::map<int, int>> mapA;
+std::map<int, std::map<int, int>> mapB;
+
+int timeRequired;
+int timeRequiredDataPhase;
 
 //prototypes of the different strategies
 void *th_calculate_single_c(void *arg);
 void *th_calculate_multiple_c(void *arg);
+void *th_efficient_calculate_single_c(void *arg);
+void *th_efficient_calculate_multiple_c(void *arg);
 
 int main(int argc, char** argv)
 {
@@ -135,14 +143,38 @@ int main(int argc, char** argv)
 
 	//preparating the threads data
 	struct threadData* _data = (struct threadData*) calloc(n_thread, sizeof(struct threadData));
-	int batch_size = n_row / n_thread;
-	for(int i = 0; i < n_thread; i++){
-		_data[i].id = i;
-		_data[i].start = batch_size * i;
-		_data[i].end = (i == n_thread-1) ? n_row :  _data[i].start + batch_size;
-		_data[i].c = new YSMF(_data[i].end-_data[i].start, n_col);
+	std::chrono::time_point<std::chrono::system_clock> initDataPhase;
+	std::chrono::time_point<std::chrono::system_clock> endDataPhase;
+	initDataPhase = std::chrono::system_clock::now();
+	if(strategy < 2){
+		int batch_size = n_row / n_thread;
+		for(int i = 0; i < n_thread; i++){
+			_data[i].id = i;
+			_data[i].start = batch_size * i;
+			_data[i].end = (i == n_thread-1) ? n_row :  _data[i].start + batch_size;
+			_data[i].c = new YSMF(_data[i].end-_data[i].start, n_col);
+		}
+	} else {
+		std::vector<std::pair<int, int>> coordinateA = a->getElmCoordinate();
+		std::vector<int> *aA = a->getA();
+		for(int i = 0; i < coordinateA.size(); i++){
+			mapA[coordinateA[i].first][coordinateA[i].second] = aA->at(i);
+		}
+		std::vector<std::pair<int, int>> coordinate = b->getElmCoordinate();
+		std::vector<int> *bA = b->getA();
+		for(int i = 0; i < coordinate.size(); i++){
+			mapB[coordinate[i].first][coordinate[i].second] = bA->at(i);
+		}
+		int batch_size = a->getA()->size() / n_thread;
+		for(int i = 0; i < n_thread; i++){
+			_data[i].id = i;
+			_data[i].start = batch_size * i;
+			_data[i].end = (i == n_thread-1) ? a->getA()->size() :  _data[i].start + batch_size;
+			_data[i].c = new YSMF(_data[i].end-_data[i].start, n_col);
+		}
 	}
-
+	endDataPhase = std::chrono::system_clock::now();
+	timeRequiredDataPhase = std::chrono::duration_cast<std::chrono::milliseconds>(endDataPhase - initDataPhase).count();
 
 	nElmWrite = (int *) calloc(n_thread, sizeof(int));
 
@@ -164,6 +196,7 @@ int main(int argc, char** argv)
 		perror("Error pthread_mutex_init lockInfo");
 	}
 	std::cout << "Start..\n";
+
 	std::chrono::time_point<std::chrono::system_clock> init;
 	std::chrono::time_point<std::chrono::system_clock> end;
 	init = std::chrono::system_clock::now();
@@ -172,8 +205,10 @@ int main(int argc, char** argv)
 	for(int i = 0; i < n_thread; i++){
 		if(strategy == 0)
 			s = pthread_create(&_data[i].tid, &attr, &th_calculate_single_c, (void *)&_data[i]);
-		else
+		else if(strategy == 1)
 			s = pthread_create(&_data[i].tid, &attr, &th_calculate_multiple_c, (void *)&_data[i]);
+		else if(strategy == 2)
+			s = pthread_create(&_data[i].tid, &attr, &th_efficient_calculate_single_c, (void *)&_data[i]);
 		if (s != 0)
 			perror("Error in pthread_create");
 	}
@@ -217,8 +252,10 @@ int main(int argc, char** argv)
 	}
 
 	end = std::chrono::system_clock::now();
-	int timeRequired = std::chrono::duration_cast<std::chrono::milliseconds>(end - init).count();
+	timeRequired = std::chrono::duration_cast<std::chrono::milliseconds>(end - init).count();
+	timeRequired += timeRequiredDataPhase;
     std::cout << "END [" << timeRequired << "]" << std::endl;
+
 	//store result and parameter
 	if(filename.compare("No File") != 0){
 		//it exists?
@@ -226,7 +263,7 @@ int main(int argc, char** argv)
 		if(!exists(filename)){
 			//write header
 			log.open (filename, std::ofstream::out | std::ofstream::app);
-			log << "rows,cols,fill,NNZ,threads,time" << std::endl;
+			log << "rows,cols,fill,NNZ,threads,timeData,timeTot" << std::endl;
 		}
 		else {
 			log.open (filename, std::ofstream::out | std::ofstream::app);
@@ -237,6 +274,7 @@ int main(int argc, char** argv)
 		log << fill << ",";
 		log << c->getNNZ() << ",";
 		log << n_thread << ",";
+		log << timeRequiredDataPhase << "";
 		log << timeRequired << "";
 		log << std::endl;
 		log.close();
@@ -264,8 +302,7 @@ void *th_calculate_single_c(void *arg) {
 	//preparing the data to use
 	struct threadData *data = (struct threadData *)arg;
 	int maxColB = b->getCols();
-	std::vector<int> *aA = a->getA();
-	std::vector<int> *aJA = a->getJA();
+	int maxRowB = b->getRows();
 	int sum ;
 	int startLine = data->start;
 	int endLine = data->end;
@@ -274,20 +311,20 @@ void *th_calculate_single_c(void *arg) {
 	for(int i = startLine; i < endLine; i++){
 		for(int j = 0; j < maxColB; j++){
 			sum = 0;
-			for(int k = 0; k < maxColB; k++){
+			for(int k = 0; k < maxRowB; k++){
 				sum += a->getElement(i,k) * b->getElement(k, j);
 			}
 			if(sum > 0) {
 				// we have to store something, check where store the data
 				int z = 0;
 				NNZ = 0;
-				pthread_mutex_lock(&lockInfo);
+				pthread_mutex_lock(&lock);
+
 				nElmWrite[data->id]++;
 				for(; z <= data->id; z++){
 					NNZ += nElmWrite[z];
 				}
-				pthread_mutex_unlock(&lockInfo);
-				pthread_mutex_lock(&lock);
+
 				//write down the result
 				c->addElementThread(sum, i, j, NNZ-1);
 				pthread_mutex_unlock(&lock);
@@ -301,25 +338,66 @@ void *th_calculate_single_c(void *arg) {
 void *th_calculate_multiple_c(void *arg) {
 	struct threadData *data = (struct threadData *)arg;
 	int maxColB = b->getCols();
-	std::vector<int> *aA = a->getA();
-	std::vector<int> *aJA = a->getJA();
+	int maxRowB = b->getRows();
 	int sum ;
 	int startLine = data->start;
 	int endLine = data->end;
-	int NNZ = 0;
 	//work only on out batch size
 	for(int i = startLine; i < endLine; i++){
 		for(int j = 0; j < maxColB; j++){
 			sum = 0;
-			for(int k = 0; k < maxColB; k++){
+			for(int k = 0; k < maxRowB; k++){
 				sum += a->getElement(i,k) * b->getElement(k, j);
 			}
 			if(sum > 0) {
 				// we have to store something, check where store the data
 				data->c->addElement(sum,i - startLine,j);
 			}
-
 		}
 	}
 	return NULL;
+}
+
+
+void *th_efficient_calculate_single_c(void *arg) {
+	struct threadData *data = (struct threadData *)arg;
+	int start = data->start;
+	int end = data->end;
+	int maxColB = b->getCols();
+	int maxRowB = b->getRows();
+	int row,col,sum;
+	for (row = start; row < end; row++) {
+		if(mapA.count(row) < 1){
+			continue;
+		}
+		//for each col of B (or elm in a row of A)
+		for(col = 0; col < maxColB; col++){
+			//foreach element in the col of B
+			sum = 0;
+			for(int k = 0; k < maxRowB; k++){
+				if(mapA[row].count(k) > 0 && mapB.count(k) > 0 && mapB[k].count(col) > 0){
+					sum += mapA[row][k] * mapB[k][col];
+				}
+			}
+			if(sum > 0){
+				int z = 0;
+				int NNZ = 0;
+				pthread_mutex_lock(&lockInfo);
+				nElmWrite[data->id]++;
+				for(; z <= data->id; z++){
+					NNZ += nElmWrite[z];
+				}
+				pthread_mutex_unlock(&lockInfo);
+				pthread_mutex_lock(&lock);
+				//write down the result
+				c->addElementThread(sum, row, col, NNZ-1);
+				pthread_mutex_unlock(&lock);
+			}
+		}
+	}
+	return NULL;
+}
+
+void *th_efficient_calculate_multiple_c(void *arg) {
+
 }
