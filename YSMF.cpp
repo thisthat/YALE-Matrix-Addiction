@@ -247,9 +247,9 @@ std::vector<int> *YSMF::getJA() {
 	return &JA;
 }
 
-void YSMF::export2CSV(char *name){
+void YSMF::export2CSV(std::string name){
 	FILE *f;
-	f = fopen(name, "w+");
+	f = fopen(name.c_str(), "w+");
 	std::string elm;
 	for(int i = 0; i < _nRows; i++){
 		for(int j = 0; j < _nCols; j++){

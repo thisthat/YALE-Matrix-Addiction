@@ -31,7 +31,7 @@ class YSMF {
 		int getCols();
 		int getRows();
 		int getNNZ();
-		void export2CSV(char *);
+		void export2CSV(std::string);
 	private:
 		int _nRows, _nCols, NNZ;
 		double _fill;
@@ -39,9 +39,6 @@ class YSMF {
         std::vector<int> IA;
         std::vector<int> JA;
 		void fillMatrix();
-
-
-
 };
 
 #endif
