@@ -13,7 +13,7 @@ void helper(std::string file){
     std::cout << "\t\t0 : Single C Matrix among thread" << std::endl;
     std::cout << "\t\t1 : Multiple C Matrix merged after" << std::endl;
     std::cout << "\t\t2 : Single C Matrix efficent" << std::endl;
-    std::cout << "\t\t3 : Multiple C Matrix efficent" << std::endl;
+    //std::cout << "\t\t3 : Multiple C Matrix efficent" << std::endl;
 	std::cout << "\t-f Append or create the result in the specified file" << std::endl;
 }
 
@@ -206,8 +206,8 @@ int main(int argc, char** argv)
 			s = pthread_create(&_data[i].tid, &attr, &th_calculate_multiple_c, (void *)&_data[i]);
 		else if(strategy == 2)
 			s = pthread_create(&_data[i].tid, &attr, &th_efficient_calculate_single_c, (void *)&_data[i]);
-		else if(strategy == 3)
-			s = pthread_create(&_data[i].tid, &attr, &th_efficient_calculate_multiple_c, (void *)&_data[i]);
+		//else if(strategy == 3)
+		//	s = pthread_create(&_data[i].tid, &attr, &th_efficient_calculate_multiple_c, (void *)&_data[i]);
 		if (s != 0)
 			perror("Error in pthread_create");
 	}
@@ -258,6 +258,11 @@ int main(int argc, char** argv)
 			cA->insert(cA->end(), tA->begin(), tA->end());
 			cJA->reserve(cJA->size() + tJA->size());
 			cJA->insert(cJA->end(), tJA->begin(), tJA->end());
+			int max = _data[i].c->getRows();
+			for(int k = 1; k <= max; k++){
+				cIA->at(++pos) = tIA->at(k) + sumElms;
+			}
+			sumElms += tIA->at(max);
 		}
 	}
 
@@ -295,6 +300,7 @@ int main(int argc, char** argv)
 		for(int i = 0; i < n_thread; i++){
 			std::cout << "[Thread " << i << "] " << (strategy == 0 ? nElmWrite[i] : _data[i].c->getA()->size())  << std::endl;
 		}
+		std::cout << "NNZ:" << c->getNNZ() << std::endl;
 		a->export2CSV("a.csv");
 		b->export2CSV("b.csv");
 		c->export2CSV("c.csv");
@@ -427,16 +433,8 @@ void *th_efficient_calculate_multiple_c(void *arg) {
 				}
 			}
 			if(sum > 0){
-				int z = 0;
-				int NNZ = 0;
-				pthread_mutex_lock(&lock);
-				nElmWrite[data->id]++;
-				for(; z <= data->id; z++){
-					NNZ += nElmWrite[z];
-				}
 				//write down the result
-				data->c->addElement(sum,row - start,col);
-				pthread_mutex_unlock(&lock);
+				data->c->addElement(sum,row,col);
 			}
 		}
 	}
