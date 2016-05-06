@@ -33,6 +33,7 @@ pdf("all_multiple.pdf", useDingbats=FALSE)
 multiple_a <- read.csv("strategy_0_multiple_thread.csv")
 multiple_b <- read.csv("strategy_1_multiple_thread.csv")
 multiple_c <- read.csv("strategy_2_multiple_thread.csv")
+par(mar=c(5,5.5,3,3), mgp=c(3.7,1,0))
 g_range <- range(0, multiple_a$timeTot, multiple_b$timeTot,multiple_c$timeTot)
 min_v = floor(min(multiple_a$timeTot, multiple_b$timeTot,multiple_c$timeTot) * 10^4) / 10^4
 max_v = floor(max(multiple_a$timeTot, multiple_b$timeTot,multiple_c$timeTot) * 10^4) / 10^4
@@ -40,8 +41,9 @@ plot(multiple_a$timeTot, type="o", col="blue",  ylim = c(0,g_range[2]), axes = F
 box()
 lines(multiple_b$timeTot,type="o", pch=22, lty=2, col="red")
 lines(multiple_c$timeTot,type="o", pch=22, lty=2, col="green")
-title(main="Multiple Thread", sub = "", xlab = "lines", ylab="time (ms)")
-axis(2,las=1, at=10000*0:g_range[2])
+title(main="Multiple Thread", sub = "", xlab = "Threads", ylab="time (ms)")
+#axis(2,las=1, at=30000*(90000:g_range[2]))
+axis(2,las=1, at=seq(90000,256000,30000))
 axis(2,las=1, at=max(multiple_c$timeTot))
 if(min_v != 0) axis(2,las=1, at=min_v)
 axis(2,las=1, at=max_v)
@@ -74,7 +76,7 @@ g_range <- range(0, blow$timeTot)
 par(mar=c(5,5.5,3,3), mgp=c(3.5,1,0))
 plot(blow$timeTot, type="o", col="blue", axes = FALSE, ann = FALSE, log="y" )
 box()
-title(main="Blow Memory Test", sub = "", xlab = "NNZ", ylab="time (ms)")
+title(main="Blow Memory Test (log scale)", sub = "", xlab = "NNZ", ylab="time (ms)")
 axis(2,las=1, at=blow$timeTot)
 axis(1, at=1:length(blow$NNZ), lab=blow$NNZ)
 legend("top",c("strategy 2"), lty=1:2 ,lwd=3, bty="n", col=c("blue"))
@@ -88,9 +90,9 @@ single_c <- read.csv("strategy_2_single_thread.csv")
 multiple_a <- read.csv("strategy_0_multiple_thread.csv")
 multiple_b <- read.csv("strategy_1_multiple_thread.csv")
 multiple_c <- read.csv("strategy_2_multiple_thread.csv")
-p_a <- single_a[5,]
-p_b <- single_b[5,]
-p_c <- single_c[5,]
+p_a <- single_a[10,]
+p_b <- single_b[10,]
+p_c <- single_c[10,]
 p_a <- p_a$timeTot
 p_b <- p_b$timeTot
 p_c <- p_c$timeTot
@@ -131,5 +133,5 @@ m_dataC <- c()
 for (i in 1:length(timeC)) dataC[i] <- timeInitC[i] / (timeC[i] - timeInitC[i]) * 100
 for (i in 1:length(timeC)) m_dataC[i] <- m_timeInitC[i] / (m_timeC[i] - m_timeInitC[i]) * 100
 boxplot(dataC, m_dataC, names = c("Single Thread", "Multiple Thread"))
-title(main="Overhead", sub = "", xlab = "", ylab="Time spent on preprocess (%)")
+title(main="Overhead Strategy 2", sub = "", xlab = "", ylab="Time spent on preprocess (%)")
 dev.off()

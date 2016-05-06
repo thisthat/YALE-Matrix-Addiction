@@ -15,7 +15,7 @@ Main.o: Main.cpp Main.hpp
 
 
 clean:
-	#rm *.o
+	rm *.o
 
 demo: compile
 	./$(NAME)

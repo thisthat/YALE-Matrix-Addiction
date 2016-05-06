@@ -22,6 +22,7 @@ YSMF *a;
 YSMF *b;
 YSMF *c;
 pthread_mutex_t lock;
+pthread_mutex_t lockInfo;
 
 int* nElmWrite;
 std::map<int, std::map<int, int>> mapA;
@@ -186,10 +187,10 @@ int main(int argc, char** argv)
 	if (s != 0) {
 		perror("Error pthread_attr_init");
 	}
-	if (s != 0) {
-		perror("Error pthread_attr_init");
-	}
 	if (pthread_mutex_init(&lock, NULL) != 0) {
+		perror("Error pthread_mutex_init lock");
+	}
+	if (pthread_mutex_init(&lockInfo, NULL) != 0) {
 		perror("Error pthread_mutex_init lock");
 	}
 	std::cout << "Start..\n";
@@ -334,13 +335,13 @@ void *th_calculate_single_c(void *arg) {
 				// we have to store something, check where store the data
 				int z = 0;
 				NNZ = 0;
-				pthread_mutex_lock(&lock);
-
+				pthread_mutex_lock(&lockInfo);
 				nElmWrite[data->id]++;
+				pthread_mutex_unlock(&lockInfo);
 				for(; z <= data->id; z++){
 					NNZ += nElmWrite[z];
 				}
-
+				pthread_mutex_lock(&lock);
 				//write down the result
 				c->addElementThread(sum, i, j, NNZ-1);
 				pthread_mutex_unlock(&lock);
@@ -398,12 +399,14 @@ void *th_efficient_calculate_single_c(void *arg) {
 			if(sum > 0){
 				int z = 0;
 				int NNZ = 0;
-				pthread_mutex_lock(&lock);
+				pthread_mutex_lock(&lockInfo);
 				nElmWrite[data->id]++;
+				pthread_mutex_unlock(&lockInfo);
 				for(; z <= data->id; z++){
 					NNZ += nElmWrite[z];
 				}
 				//write down the result
+				pthread_mutex_lock(&lock);
 				c->addElementThread(sum, row, col, NNZ-1);
 				pthread_mutex_unlock(&lock);
 			}
