@@ -137,9 +137,8 @@ int main(int argc, char** argv)
     std::cout << "\tfile: " << filename << std::endl;
 
 	//prepare matrix
-	int tmpDim = std::min(n_row, n_col);
-	a = new YSMF(n_row, tmpDim, fill);
-	b = new YSMF(tmpDim, n_col, fill);
+	a = new YSMF(n_row, n_col, fill);
+	b = new YSMF(n_row, n_col, fill);
     c = new YSMF(n_row, n_col);
 	std::vector<int> *cA = c->getA();
 	std::vector<int> *cIA = c->getIA();
@@ -207,8 +206,6 @@ int main(int argc, char** argv)
 			s = pthread_create(&_data[i].tid, &attr, &th_calculate_multiple_c, (void *)&_data[i]);
 		else if(strategy == 2)
 			s = pthread_create(&_data[i].tid, &attr, &th_efficient_calculate_single_c, (void *)&_data[i]);
-		//else if(strategy == 3)
-		//	s = pthread_create(&_data[i].tid, &attr, &th_efficient_calculate_multiple_c, (void *)&_data[i]);
 		if (s != 0)
 			perror("Error in pthread_create");
 	}
@@ -245,20 +242,6 @@ int main(int argc, char** argv)
 			cJA->reserve(cJA->size() + tJA->size());
 			cJA->insert(cJA->end(), tJA->begin(), tJA->end());
 			//full fill spaces
-			int max = _data[i].c->getRows();
-			for(int k = 1; k <= max; k++){
-				cIA->at(++pos) = tIA->at(k) + sumElms;
-			}
-			sumElms += tIA->at(max);
-		}
-		else if(strategy == 3){
-			std::vector<int> *tA = _data[i].c->getA();
-			std::vector<int> *tIA = _data[i].c->getIA();
-			std::vector<int> *tJA = _data[i].c->getJA();
-			cA->reserve(cA->size() + tA->size());
-			cA->insert(cA->end(), tA->begin(), tA->end());
-			cJA->reserve(cJA->size() + tJA->size());
-			cJA->insert(cJA->end(), tJA->begin(), tJA->end());
 			int max = _data[i].c->getRows();
 			for(int k = 1; k <= max; k++){
 				cIA->at(++pos) = tIA->at(k) + sumElms;
@@ -319,7 +302,6 @@ void *th_calculate_single_c(void *arg) {
 	//preparing the data to use
 	struct threadData *data = (struct threadData *)arg;
 	int maxColB = b->getCols();
-	int maxRowB = b->getRows();
 	int sum ;
 	int startLine = data->start;
 	int endLine = data->end;
@@ -327,18 +309,14 @@ void *th_calculate_single_c(void *arg) {
 	//work only on out batch size
 	for(int i = startLine; i < endLine; i++){
 		for(int j = 0; j < maxColB; j++){
-			sum = 0;
-			for(int k = 0; k < maxRowB; k++){
-				sum += a->getElement(i,k) * b->getElement(k, j);
-			}
+			sum = a->getElement(i,j) + b->getElement(i, j);
 			if(sum > 0) {
 				// we have to store something, check where store the data
-				int z = 0;
 				NNZ = 0;
 				pthread_mutex_lock(&lockInfo);
 				nElmWrite[data->id]++;
 				pthread_mutex_unlock(&lockInfo);
-				for(; z <= data->id; z++){
+				for(int z = 0; z <= data->id; z++){
 					NNZ += nElmWrite[z];
 				}
 				pthread_mutex_lock(&lock);
@@ -355,17 +333,13 @@ void *th_calculate_single_c(void *arg) {
 void *th_calculate_multiple_c(void *arg) {
 	struct threadData *data = (struct threadData *)arg;
 	int maxColB = b->getCols();
-	int maxRowB = b->getRows();
 	int sum ;
 	int startLine = data->start;
 	int endLine = data->end;
 	//work only on out batch size
 	for(int i = startLine; i < endLine; i++){
 		for(int j = 0; j < maxColB; j++){
-			sum = 0;
-			for(int k = 0; k < maxRowB; k++){
-				sum += a->getElement(i,k) * b->getElement(k, j);
-			}
+			sum = a->getElement(i,j) + b->getElement(i, j);
 			if(sum > 0) {
 				// we have to store something, check where store the data
 				data->c->addElement(sum,i - startLine,j);
@@ -381,20 +355,19 @@ void *th_efficient_calculate_single_c(void *arg) {
 	int start = data->start;
 	int end = data->end;
 	int maxColB = b->getCols();
-	int maxRowB = b->getRows();
 	int row,col,sum;
 	for (row = start; row < end; row++) {
-		if(mapA.count(row) < 1){
+		if(mapA.count(row) < 1 && mapA.count(row)){
 			continue;
 		}
-		//for each col of B (or elm in a row of A)
+		//for each col of B
 		for(col = 0; col < maxColB; col++){
-			//foreach element in the col of B
 			sum = 0;
-			for(int k = 0; k < maxRowB; k++){
-				if(mapA[row].count(k) > 0 && mapB.count(k) > 0 && mapB[k].count(col) > 0){
-					sum += mapA[row][k] * mapB[k][col];
-				}
+			if(mapA[row].count(col) > 0){
+				sum += mapA[row][col];
+			}
+			if(mapB[row].count(col) > 0){
+				sum += mapB[row][col];
 			}
 			if(sum > 0){
 				int z = 0;
@@ -409,35 +382,6 @@ void *th_efficient_calculate_single_c(void *arg) {
 				pthread_mutex_lock(&lock);
 				c->addElementThread(sum, row, col, NNZ-1);
 				pthread_mutex_unlock(&lock);
-			}
-		}
-	}
-	return NULL;
-}
-
-void *th_efficient_calculate_multiple_c(void *arg) {
-	struct threadData *data = (struct threadData *)arg;
-	int start = data->start;
-	int end = data->end;
-	int maxColB = b->getCols();
-	int maxRowB = b->getRows();
-	int row,col,sum;
-	for (row = start; row < end; row++) {
-		if(mapA.count(row) < 1){
-			continue;
-		}
-		//for each col of B (or elm in a row of A)
-		for(col = 0; col < maxColB; col++){
-			//foreach element in the col of B
-			sum = 0;
-			for(int k = 0; k < maxRowB; k++){
-				if(mapA[row].count(k) > 0 && mapB.count(k) > 0 && mapB[k].count(col) > 0){
-					sum += mapA[row][k] * mapB[k][col];
-				}
-			}
-			if(sum > 0){
-				//write down the result
-				data->c->addElement(sum,row,col);
 			}
 		}
 	}

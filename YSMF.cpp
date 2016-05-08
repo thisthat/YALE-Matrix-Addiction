@@ -154,7 +154,7 @@ void YSMF::fillMatrix() {
 	for(int i = 1; i < _nRows; i++){
 		double p = unif(rng);
 		if(p > PP){
-			int n = 1;
+			int n;
 			dist = _nRows - i;
 			n = (ndd / dist);
 			//not too many for each row

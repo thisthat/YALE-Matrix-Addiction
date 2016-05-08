@@ -6,7 +6,7 @@ tmp <- read.csv("b.csv", header = FALSE)
 b <- as.matrix(tmp)
 tmp <- read.csv("c.csv", header = FALSE)
 c <- as.matrix(tmp)
-matequal(a %*% b, c)
+matequal(a + b, c)
 
 
 pdf("all_single.pdf", useDingbats=FALSE)
