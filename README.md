@@ -1,1 +1,1 @@
-# YALE Matrix Addiction w/ pthread
+# YALE Matrix Addition w/ pthread
